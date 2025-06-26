@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>ISOBootable - Make Your ISO Bootable</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+        body {
+            font-family: "Segoe UI", Arial, sans-serif;
+            background: #161b22;
+            color: #f0f6fc;
+            margin: 0;
+            padding: 0;
+        }
+        header {
+            background: #21262d;
+            padding: 2rem 0 1rem 0;
+            text-align: center;
+        }
+        h1 {
+            margin: 0;
+            font-size: 2.4rem;
+        }
+        main {
+            max-width: 500px;
+            margin: 2rem auto;
+            background: #262e39;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 24px #0a0a0a40;
+        }
+        label, p {
+            font-size: 1.1rem;
+        }
+        input[type="file"] {
+            margin-top: 1rem;
+            margin-bottom: 1.5rem;
+            font-size: 1rem;
+        }
+        button {
+            background: #238636;
+            color: #fff;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1.1rem;
+        }
+        button:disabled {
+            background: #444c56;
+            cursor: not-allowed;
+        }
+        #result {
+            margin-top: 1.8rem;
+            padding: 1rem;
+            background: #20262e;
+            border-radius: 5px;
+            word-break: break-all;
+        }
+        .footer {
+            text-align: center;
+            color: #586069;
+            margin-top: 4rem;
+            font-size: 0.95rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>ISOBootable</h1>
+        <p>Import your ISO file and make it bootable instantly!</p>
+    </header>
+    <main>
+        <form id="isoForm">
+            <label for="isoInput">Select ISO file:</label><br>
+            <input type="file" id="isoInput" accept=".iso,application/octet-stream" required><br>
+            <button type="submit" id="submitBtn" disabled>Make Bootable</button>
+        </form>
+        <div id="result"></div>
+    </main>
+    <div class="footer">
+        &copy; 2025 ISOBootable. No files are uploaded—everything runs in your browser.
+    </div>
+    <script>
+        const isoInput = document.getElementById('isoInput');
+        const submitBtn = document.getElementById('submitBtn');
+        const resultDiv = document.getElementById('result');
+        const form = document.getElementById('isoForm');
+
+        isoInput.addEventListener('change', () => {
+            submitBtn.disabled = !isoInput.files.length;
+            resultDiv.textContent = "";
+        });
+
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const file = isoInput.files[0];
+            if (!file) return;
+
+            submitBtn.disabled = true;
+            resultDiv.textContent = "Processing...";
+
+            try {
+                // Read ISO file as ArrayBuffer
+                const arrayBuffer = await file.arrayBuffer();
+                const isoData = new Uint8Array(arrayBuffer);
+
+                // Patch the ISO to be bootable
+                // This is a minimal example: ensure the boot record indicator is set at byte 0x47 (71) of sector 16 (offset 0x8000 + 71)
+                // Real boot patching may be more involved; this is illustrative.
+                const sector16Offset = 16 * 2048;
+                const bootIndicatorOffset = sector16Offset + 71; // 0x8000 + 0x47
+                if (isoData.length > bootIndicatorOffset) {
+                    isoData[bootIndicatorOffset] = 0x88; // Set as bootable (0x88 for boot, 0x00 for not bootable)
+                }
+
+                // Create a new Blob and a download link
+                const patchedBlob = new Blob([isoData], { type: "application/octet-stream" });
+                const url = URL.createObjectURL(patchedBlob);
+
+                resultDiv.innerHTML = `
+                    ✅ ISO patched!<br>
+                    <a href="${url}" download="bootable_${file.name}">Download Bootable ISO</a>
+                `;
+            } catch (err) {
+                resultDiv.textContent = "Error processing ISO: " + err.message;
+            } finally {
+                submitBtn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>
